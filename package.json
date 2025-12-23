@@ -1,4 +1,41 @@
 {
   "name": "electron-types",
-  "packageManager": "yarn@4.12.0"
+  "version": "0.0.0",
+  "description": "TypeScript type definitions extracted from the electron package",
+  "types": "./dist/electron.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "extract": "tsx scripts/extract-types.ts",
+    "build": "tsx scripts/build.ts",
+    "test": "tsx scripts/test-types.ts",
+    "check-versions": "tsx scripts/check-versions.ts"
+  },
+  "keywords": [
+    "electron",
+    "types",
+    "typescript",
+    "definitions"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AaronJan/electron-types.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AaronJan/electron-types/issues"
+  },
+  "homepage": "https://github.com/AaronJan/electron-types#readme",
+  "dependencies": {
+    "@types/node": "^22.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "packageManager": "yarn@4.12.0",
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

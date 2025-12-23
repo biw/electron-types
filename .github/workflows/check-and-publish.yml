@@ -1,0 +1,99 @@
+name: Check and Publish
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Specific electron version to publish (leave empty for latest)"
+        required: false
+        type: string
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      needs-publish: ${{ steps.check.outputs.needs-publish }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Check for new versions
+        id: check
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "needs-publish=true" >> $GITHUB_OUTPUT
+          else
+            result=$(yarn check-versions --json)
+            echo "Check result: $result"
+            version=$(echo "$result" | jq -r '.latestElectron')
+            needs_publish=$(echo "$result" | jq -r '.needsPublish')
+            echo "version=$version" >> $GITHUB_OUTPUT
+            echo "needs-publish=$needs_publish" >> $GITHUB_OUTPUT
+          fi
+
+  publish:
+    needs: check-versions
+    if: needs.check-versions.outputs.needs-publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Extract and build
+        run: yarn build ${{ needs.check-versions.outputs.version }}
+
+      - name: Test types
+        run: yarn test
+
+      - name: Check if version already published
+        id: check-published
+        run: |
+          version="${{ needs.check-versions.outputs.version }}"
+          if npm view electron-types@$version version 2>/dev/null; then
+            echo "already-published=true" >> $GITHUB_OUTPUT
+          else
+            echo "already-published=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to npm
+        if: steps.check-published.outputs.already-published == 'false'
+        run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        if: steps.check-published.outputs.already-published == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-versions.outputs.version }}
+          name: v${{ needs.check-versions.outputs.version }}
+          body: |
+            Type definitions extracted from electron@${{ needs.check-versions.outputs.version }}
+          generate_release_notes: false
