@@ -42,6 +42,9 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             # Manual version specified
             echo 'versions=["${{ inputs.version }}"]' >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            # For PRs, always build latest to preview artifacts
+            echo 'versions=["latest"]' >> $GITHUB_OUTPUT
           else
             # Auto-detect versions to publish from releases.electronjs.org
             result=$(yarn check-versions --json)
@@ -85,6 +88,36 @@ jobs:
 
       - name: Create package tarball
         run: npm pack
+
+      - name: Write job summary
+        if: github.event_name == 'pull_request'
+        run: |
+          resolved_version=$(node -p "require('./package.json').version")
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # electron-types@${resolved_version}
+
+          ## GitHub Release Body Preview
+
+          > Type definitions extracted from electron@${resolved_version}
+          >
+          > ## Installation
+          >
+          > \`\`\`bash
+          > npm install -D electron-types@${resolved_version}
+          > # or
+          > yarn add -D electron-types@${resolved_version}
+          > # or
+          > pnpm add -D electron-types@${resolved_version}
+          > \`\`\`
+
+          ---
+
+          ## npm README Preview
+
+          EOF
+
+          cat README.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
@@ -138,5 +171,15 @@ jobs:
           name: v${{ matrix.version }}
           body: |
             Type definitions extracted from electron@${{ matrix.version }}
+
+            ## Installation
+
+            ```bash
+            npm install -D electron-types@${{ matrix.version }}
+            # or
+            yarn add -D electron-types@${{ matrix.version }}
+            # or
+            pnpm add -D electron-types@${{ matrix.version }}
+            ```
           generate_release_notes: false
           prerelease: ${{ contains(matrix.version, '-alpha') || contains(matrix.version, '-beta') }}
