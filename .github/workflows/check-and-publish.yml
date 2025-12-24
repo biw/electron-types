@@ -86,12 +86,32 @@ jobs:
       - name: Create package tarball
         run: npm pack
 
+      - name: Generate release body preview
+        if: github.event_name == 'pull_request'
+        run: |
+          cat > RELEASE_BODY.md << 'EOF'
+          Type definitions extracted from electron@${{ matrix.version }}
+
+          ## Installation
+
+          ```bash
+          npm install -D electron-types@${{ matrix.version }}
+          # or
+          yarn add -D electron-types@${{ matrix.version }}
+          # or
+          pnpm add -D electron-types@${{ matrix.version }}
+          ```
+          EOF
+
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: electron-types-${{ matrix.version }}
-          path: electron-types-*.tgz
+          path: |
+            electron-types-*.tgz
+            README.md
+            RELEASE_BODY.md
           retention-days: 7
 
       - name: Check if version already published
