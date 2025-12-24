@@ -138,5 +138,15 @@ jobs:
           name: v${{ matrix.version }}
           body: |
             Type definitions extracted from electron@${{ matrix.version }}
+
+            ## Installation
+
+            ```bash
+            npm install -D electron-types@${{ matrix.version }}
+            # or
+            yarn add -D electron-types@${{ matrix.version }}
+            # or
+            pnpm add -D electron-types@${{ matrix.version }}
+            ```
           generate_release_notes: false
           prerelease: ${{ contains(matrix.version, '-alpha') || contains(matrix.version, '-beta') }}

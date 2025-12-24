@@ -7,6 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = join(__dirname, "..");
 const DIST_DIR = join(ROOT_DIR, "dist");
 const PACKAGE_JSON_PATH = join(ROOT_DIR, "package.json");
+const README_PATH = join(ROOT_DIR, "README.md");
 
 async function build(version: string = "latest"): Promise<void> {
   console.log(`Building electron-types for version: ${version}`);
@@ -25,7 +26,13 @@ async function build(version: string = "latest"): Promise<void> {
   packageJson.version = resolvedVersion;
   writeFileSync(PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2) + "\n");
 
+  // Update README.md to replace X.Y.Z placeholders with actual version
+  let readme = readFileSync(README_PATH, "utf-8");
+  readme = readme.replace(/X\.Y\.Z/g, resolvedVersion);
+  writeFileSync(README_PATH, readme);
+
   console.log(`Updated package.json version to ${resolvedVersion}`);
+  console.log(`Updated README.md with version ${resolvedVersion}`);
   console.log("Build complete!");
 }
 
