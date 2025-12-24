@@ -23,12 +23,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AaronJan/electron-types.git"
+    "url": "git+https://github.com/biw/electron-types.git"
   },
   "bugs": {
-    "url": "https://github.com/AaronJan/electron-types/issues"
+    "url": "https://github.com/biw/electron-types/issues"
   },
-  "homepage": "https://github.com/AaronJan/electron-types#readme",
+  "homepage": "https://github.com/biw/electron-types#readme",
   "dependencies": {
     "@types/node": "^22.0.0"
   },
