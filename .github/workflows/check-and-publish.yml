@@ -1,6 +1,7 @@
 name: Check and Publish
 
 on:
+  pull_request:
   schedule:
     # Run every 6 hours
     - cron: "0 */6 * * *"
@@ -49,8 +50,8 @@ jobs:
             echo "versions=$versions" >> $GITHUB_OUTPUT
           fi
 
-  publish:
-    name: publish (${{ matrix.version }})
+  build:
+    name: build (${{ matrix.version }})
     needs: check-versions
     if: needs.check-versions.outputs.versions != '[]'
     runs-on: ubuntu-latest
@@ -82,8 +83,20 @@ jobs:
       - name: Test types
         run: yarn test
 
+      - name: Create package tarball
+        run: npm pack
+
+      - name: Upload build artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-types-${{ matrix.version }}
+          path: electron-types-*.tgz
+          retention-days: 7
+
       - name: Check if version already published
         id: check-published
+        if: github.event_name != 'pull_request'
         run: |
           version="${{ matrix.version }}"
           if npm view electron-types@$version version 2>/dev/null; then
@@ -93,13 +106,16 @@ jobs:
           fi
 
       - name: Ensure recent npm for trusted publishing
+        if: github.event_name != 'pull_request'
         run: npm install -g npm@latest
 
       - name: Verify npm version
+        if: github.event_name != 'pull_request'
         run: npm --version
 
       - name: Determine npm tag
         id: npm-tag
+        if: github.event_name != 'pull_request'
         run: |
           version="${{ matrix.version }}"
           if [[ "$version" == *"-alpha"* ]]; then
@@ -111,11 +127,11 @@ jobs:
           fi
 
       - name: Publish to npm
-        if: steps.check-published.outputs.already-published == 'false'
+        if: github.event_name != 'pull_request' && steps.check-published.outputs.already-published == 'false'
         run: npm publish --provenance --access public --tag ${{ steps.npm-tag.outputs.tag }}
 
       - name: Create GitHub Release
-        if: steps.check-published.outputs.already-published == 'false'
+        if: github.event_name != 'pull_request' && steps.check-published.outputs.already-published == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ matrix.version }}
