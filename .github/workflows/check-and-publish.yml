@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Specific electron version to publish (leave empty for latest)"
+        description: "Specific electron version to publish (leave empty for auto-detection)"
         required: false
         type: string
 
@@ -20,8 +20,7 @@ jobs:
   check-versions:
     runs-on: ubuntu-latest
     outputs:
-      needs-publish: ${{ steps.check.outputs.needs-publish }}
-      version: ${{ steps.check.outputs.version }}
+      versions: ${{ steps.check.outputs.versions }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,24 +39,28 @@ jobs:
         id: check
         run: |
           if [ -n "${{ inputs.version }}" ]; then
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-            echo "needs-publish=true" >> $GITHUB_OUTPUT
+            # Manual version specified
+            echo 'versions=["${{ inputs.version }}"]' >> $GITHUB_OUTPUT
           else
+            # Auto-detect versions to publish from releases.electronjs.org
             result=$(yarn check-versions --json)
             echo "Check result: $result"
-            version=$(echo "$result" | jq -r '.latestElectron')
-            needs_publish=$(echo "$result" | jq -r '.needsPublish')
-            echo "version=$version" >> $GITHUB_OUTPUT
-            echo "needs-publish=$needs_publish" >> $GITHUB_OUTPUT
+            versions=$(echo "$result" | jq -c '.versionsToPublish')
+            echo "versions=$versions" >> $GITHUB_OUTPUT
           fi
 
   publish:
+    name: publish (${{ matrix.version }})
     needs: check-versions
-    if: needs.check-versions.outputs.needs-publish == 'true'
+    if: needs.check-versions.outputs.versions != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJson(needs.check-versions.outputs.versions) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -74,7 +77,7 @@ jobs:
         run: yarn install
 
       - name: Extract and build
-        run: yarn build ${{ needs.check-versions.outputs.version }}
+        run: yarn build ${{ matrix.version }}
 
       - name: Test types
         run: yarn test
@@ -82,7 +85,7 @@ jobs:
       - name: Check if version already published
         id: check-published
         run: |
-          version="${{ needs.check-versions.outputs.version }}"
+          version="${{ matrix.version }}"
           if npm view electron-types@$version version 2>/dev/null; then
             echo "already-published=true" >> $GITHUB_OUTPUT
           else
@@ -95,16 +98,29 @@ jobs:
       - name: Verify npm version
         run: npm --version
 
+      - name: Determine npm tag
+        id: npm-tag
+        run: |
+          version="${{ matrix.version }}"
+          if [[ "$version" == *"-alpha"* ]]; then
+            echo "tag=alpha" >> $GITHUB_OUTPUT
+          elif [[ "$version" == *"-beta"* ]]; then
+            echo "tag=beta" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to npm
         if: steps.check-published.outputs.already-published == 'false'
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag ${{ steps.npm-tag.outputs.tag }}
 
       - name: Create GitHub Release
         if: steps.check-published.outputs.already-published == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.check-versions.outputs.version }}
-          name: v${{ needs.check-versions.outputs.version }}
+          tag_name: v${{ matrix.version }}
+          name: v${{ matrix.version }}
           body: |
-            Type definitions extracted from electron@${{ needs.check-versions.outputs.version }}
+            Type definitions extracted from electron@${{ matrix.version }}
           generate_release_notes: false
+          prerelease: ${{ contains(matrix.version, '-alpha') || contains(matrix.version, '-beta') }}
