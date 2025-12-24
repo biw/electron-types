@@ -89,6 +89,12 @@ jobs:
             echo "already-published=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Ensure recent npm for trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Verify npm version
+        run: npm --version
+
       - name: Publish to npm
         if: steps.check-published.outputs.already-published == 'false'
         run: npm publish --provenance --access public
