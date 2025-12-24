@@ -26,9 +26,21 @@ async function build(version: string = "latest"): Promise<void> {
   packageJson.version = resolvedVersion;
   writeFileSync(PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2) + "\n");
 
-  // Update README.md to replace X.Y.Z placeholders with actual version
+  // Update README.md to add version to install commands
   let readme = readFileSync(README_PATH, "utf-8");
-  readme = readme.replace(/X\.Y\.Z/g, resolvedVersion);
+  // Replace install commands with version-specific ones
+  readme = readme.replace(
+    /npm install -D electron-types\n/g,
+    `npm install -D electron-types@${resolvedVersion}\n`
+  );
+  readme = readme.replace(
+    /yarn add -D electron-types\n/g,
+    `yarn add -D electron-types@${resolvedVersion}\n`
+  );
+  readme = readme.replace(
+    /pnpm add -D electron-types\n/g,
+    `pnpm add -D electron-types@${resolvedVersion}\n`
+  );
   writeFileSync(README_PATH, readme);
 
   console.log(`Updated package.json version to ${resolvedVersion}`);
