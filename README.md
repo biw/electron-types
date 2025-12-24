@@ -8,32 +8,50 @@ The official `electron` package is ~200MB because it includes the Electron binar
 
 ## Installation
 
-Since this package only provides TypeScript types, install it as a dev dependency:
+Since this package only provides TypeScript types, install it as a dev dependency. **Install the version that matches your Electron version** (see [Version Matching](#version-matching)):
+
+```bash
+# Replace X.Y.Z with your Electron version (e.g., 39.2.7)
+npm install -D electron-types@X.Y.Z
+# or
+yarn add -D electron-types@X.Y.Z
+# or
+pnpm add -D electron-types@X.Y.Z
+```
+
+You can also use semver ranges to stay compatible with your Electron version:
+
+```bash
+# Match any 39.x.x version
+npm install -D electron-types@^39.0.0
+
+# Match any 39.2.x version
+npm install -D electron-types@~39.2.0
+```
+
+Or install without a version to get the latest:
 
 ```bash
 npm install -D electron-types
-# or
-yarn add -D electron-types
-# or
-pnpm add -D electron-types
 ```
 
 ## Usage
 
-The types are available via the `Electron` namespace:
+Add `electron-types` to your `tsconfig.json`:
 
-```typescript
-// Types are available via the Electron namespace
-const win: Electron.BrowserWindow = /* ... */;
-const app: Electron.App = /* ... */;
+```json
+{
+  "compilerOptions": {
+    "types": ["electron-types"]
+  }
+}
 ```
 
-For projects that need to reference the types in a `.d.ts` file:
+Then use the `Electron` namespace in your code:
 
 ```typescript
-/// <reference types="electron-types" />
-
-declare const myWindow: Electron.BrowserWindow;
+const win: Electron.BrowserWindow = /* ... */;
+const app: Electron.App = /* ... */;
 ```
 
 ## Version Matching
