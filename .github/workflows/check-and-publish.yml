@@ -89,36 +89,42 @@ jobs:
       - name: Create package tarball
         run: npm pack
 
-      - name: Generate release body preview
-        id: release-preview
+      - name: Write job summary
         if: github.event_name == 'pull_request'
         run: |
-          # Get the actual resolved version from package.json (handles "latest" input)
           resolved_version=$(node -p "require('./package.json').version")
-          echo "resolved_version=${resolved_version}" >> $GITHUB_OUTPUT
-          cat > RELEASE_BODY.md << EOF
-          Type definitions extracted from electron@${resolved_version}
 
-          ## Installation
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # electron-types@${resolved_version}
 
-          \`\`\`bash
-          npm install -D electron-types@${resolved_version}
-          # or
-          yarn add -D electron-types@${resolved_version}
-          # or
-          pnpm add -D electron-types@${resolved_version}
-          \`\`\`
+          ## GitHub Release Body Preview
+
+          > Type definitions extracted from electron@${resolved_version}
+          >
+          > ## Installation
+          >
+          > \`\`\`bash
+          > npm install -D electron-types@${resolved_version}
+          > # or
+          > yarn add -D electron-types@${resolved_version}
+          > # or
+          > pnpm add -D electron-types@${resolved_version}
+          > \`\`\`
+
+          ---
+
+          ## npm README Preview
+
           EOF
+
+          cat README.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: electron-types-${{ steps.release-preview.outputs.resolved_version }}
-          path: |
-            electron-types-*.tgz
-            README.md
-            RELEASE_BODY.md
+          name: electron-types-${{ matrix.version }}
+          path: electron-types-*.tgz
           retention-days: 7
 
       - name: Check if version already published
