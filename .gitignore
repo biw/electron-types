@@ -12,6 +12,9 @@ node_modules
 # Build output
 dist/
 
+# Conductor workspace context
+.context/
+
 # npm pack output
 *.tgz
 
