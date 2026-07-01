@@ -1,6 +1,5 @@
 # electron-types
 
-[![CI](https://badgen.net/github/checks/biw/electron-types)](https://github.com/biw/electron-types/actions)
 [![npm version](https://badgen.net/npm/v/electron-types)](https://www.npmjs.com/package/electron-types)
 [![npm downloads](https://badgen.net/npm/dt/electron-types)](https://www.npmjs.com/package/electron-types)
 
