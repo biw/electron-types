@@ -34,7 +34,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
 
       - name: Check for new versions
         id: check
@@ -47,7 +47,7 @@ jobs:
             echo 'versions=["latest"]' >> $GITHUB_OUTPUT
           else
             # Auto-detect versions to publish from releases.electronjs.org
-            result=$(yarn check-versions --json)
+            result=$(pnpm check-versions --json)
             echo "Check result: $result"
             versions=$(echo "$result" | jq -c '.versionsToPublish')
             echo "versions=$versions" >> $GITHUB_OUTPUT
@@ -78,13 +78,13 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
 
       - name: Extract and build
-        run: yarn build ${{ matrix.version }}
+        run: pnpm build ${{ matrix.version }}
 
       - name: Test types
-        run: yarn test
+        run: pnpm test
 
       - name: Create package tarball
         run: npm pack
