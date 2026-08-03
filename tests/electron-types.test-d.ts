@@ -108,7 +108,15 @@ describe("Electron types", () => {
       expectTypeOf<Electron.Clipboard>().not.toBeAny();
       expectTypeOf<Electron.Clipboard>().toHaveProperty("readText");
       expectTypeOf<Electron.Clipboard>().toHaveProperty("writeText");
-      expectTypeOf<Electron.Clipboard>().toHaveProperty("readImage");
+
+      // Electron 44 replaced the legacy synchronous `readImage` API with the
+      // asynchronous `read` API. Accept either generation of the Clipboard API.
+      type HasClipboardReadApi = "readImage" extends keyof Electron.Clipboard
+        ? true
+        : "read" extends keyof Electron.Clipboard
+          ? true
+          : false;
+      expectTypeOf<HasClipboardReadApi>().toEqualTypeOf<true>();
     });
 
     it("GlobalShortcut", () => {

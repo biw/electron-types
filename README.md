@@ -55,24 +55,27 @@ This package is automatically updated via CI:
 
 ## Development
 
+Local development requires Node.js 22.13+ for pnpm 11. Enable Corepack once with
+`corepack enable` if pnpm is not already available.
+
 ```bash
 # Install dependencies
-yarn install
+pnpm install
 
 # Extract types from latest electron
-yarn extract
+pnpm extract
 
 # Extract types from a specific version
-yarn extract 39.2.7
+pnpm extract 39.2.7
 
 # Build package for a specific version (extract + update version)
-yarn build 39.2.7
+pnpm build 39.2.7
 
 # Test that types work correctly
-yarn test
+pnpm test
 
 # Check if a new version needs to be published
-yarn check-versions
+pnpm check-versions
 ```
 
 ## License
