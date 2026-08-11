@@ -3,10 +3,17 @@ interface ElectronRelease {
   date: string;
 }
 
+interface NpmPackageMetadata {
+  versions: Record<string, unknown>;
+  time: Record<string, string>;
+}
+
 interface VersionCheckResult {
   versionsToPublish: string[];
   stableVersions: string[];
   prereleaseVersions: string[];
+  unpublishedElectronVersions: string[];
+  backlogVersions: string[];
 }
 
 async function getElectronReleases(): Promise<ElectronRelease[]> {
@@ -17,17 +24,31 @@ async function getElectronReleases(): Promise<ElectronRelease[]> {
   return response.json();
 }
 
-async function getPublishedElectronTypesVersions(): Promise<Set<string>> {
+async function getPublishedElectronTypesVersions(): Promise<{
+  versions: Set<string>;
+  createdAt?: string;
+}> {
   const response = await fetch("https://registry.npmjs.org/electron-types");
   if (response.status === 404) {
     // Package doesn't exist yet
-    return new Set();
+    return { versions: new Set() };
   }
   if (!response.ok) {
     throw new Error(`Failed to fetch electron-types versions: ${response.statusText}`);
   }
-  const data = await response.json();
-  return new Set(Object.keys(data.versions || {}));
+  const data = (await response.json()) as NpmPackageMetadata;
+  return {
+    versions: new Set(Object.keys(data.versions || {})),
+    createdAt: data.time?.created,
+  };
+}
+
+async function getPublishedElectronVersions(): Promise<NpmPackageMetadata> {
+  const response = await fetch("https://registry.npmjs.org/electron");
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Electron versions from npm: ${response.statusText}`);
+  }
+  return response.json();
 }
 
 function isNightly(version: string): boolean {
@@ -36,6 +57,10 @@ function isNightly(version: string): boolean {
 
 function isPrerelease(version: string): boolean {
   return version.includes("-alpha") || version.includes("-beta");
+}
+
+function isSupportedRelease(version: string): boolean {
+  return !isNightly(version) && (!version.includes("-") || isPrerelease(version));
 }
 
 function getMajorVersion(version: string): number {
@@ -89,9 +114,10 @@ function getLatestPrereleases(releases: ElectronRelease[], latestStableMajor: nu
 }
 
 async function checkVersions(): Promise<VersionCheckResult> {
-  const [releases, publishedVersions] = await Promise.all([
+  const [releases, publishedElectronTypes, publishedElectron] = await Promise.all([
     getElectronReleases(),
     getPublishedElectronTypesVersions(),
+    getPublishedElectronVersions(),
   ]);
 
   // Get top 3 stable versions (matches releases.electronjs.org)
@@ -103,13 +129,34 @@ async function checkVersions(): Promise<VersionCheckResult> {
   // Get prereleases for upcoming major versions only
   const prereleaseVersions = getLatestPrereleases(releases, latestStableMajor);
 
-  const allTargetVersions = [...stableVersions, ...prereleaseVersions];
-  const versionsToPublish = allTargetVersions.filter((v) => !publishedVersions.has(v));
+  const currentTargetVersions = [...stableVersions, ...prereleaseVersions];
+  const publishedElectronVersionSet = new Set(Object.keys(publishedElectron.versions || {}));
+  const unpublishedElectronVersions = currentTargetVersions.filter(
+    (version) => !publishedElectronVersionSet.has(version)
+  );
+
+  // Backfill every stable, alpha, and beta Electron release published after this package began.
+  // npm is authoritative here: the Electron release feed can include incomplete release builds.
+  const electronTypesCreatedAt = publishedElectronTypes.createdAt;
+  const backlogVersions = electronTypesCreatedAt
+    ? Array.from(publishedElectronVersionSet).filter(
+        (version) =>
+          publishedElectron.time[version] >= electronTypesCreatedAt &&
+          isSupportedRelease(version) &&
+          !publishedElectronTypes.versions.has(version)
+      )
+    : [];
+  const allTargetVersions = [...new Set([...currentTargetVersions, ...backlogVersions])];
+  const versionsToPublish = allTargetVersions.filter(
+    (version) => publishedElectronVersionSet.has(version) && !publishedElectronTypes.versions.has(version)
+  );
 
   return {
     versionsToPublish,
     stableVersions,
     prereleaseVersions,
+    unpublishedElectronVersions,
+    backlogVersions,
   };
 }
 
@@ -124,6 +171,8 @@ checkVersions()
     } else {
       console.log(`Stable versions: ${result.stableVersions.join(", ")}`);
       console.log(`Prerelease versions: ${result.prereleaseVersions.join(", ") || "(none)"}`);
+      console.log(`Not yet published to npm: ${result.unpublishedElectronVersions.join(", ") || "(none)"}`);
+      console.log(`Backfill versions: ${result.backlogVersions.join(", ") || "(none)"}`);
       console.log(`Versions to publish: ${result.versionsToPublish.length > 0 ? result.versionsToPublish.join(", ") : "(none)"}`);
     }
   })
